@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Half‑Pizza Progressive Indicator (pressable buttons)</title>
+  <title>Half‑Pizza Progressive Indicator (Pressable + PLACES)</title>
   <style>
     :root{
       --bg:#0b0c10; --text:#e6e8ec; --muted:#a3adbd;
@@ -42,6 +42,17 @@
       transition: opacity 320ms ease; }
     .slice-on.glow{ filter: drop-shadow(0 0 18px var(--on-glow)); }
 
+    /* Group flash when 6 is full */
+    #slices-on.green-flash{ animation: greenFlash 600ms ease-in-out 2; }
+    @keyframes greenFlash{
+      0%,100%{ filter: drop-shadow(0 0 12px rgba(34,197,94,.6)); }
+      50%   { filter: drop-shadow(0 0 34px rgba(34,197,94,1)); }
+    }
+
+    /* Letters appearing over slices */
+    .letter{ fill:#fff; stroke:#0b0c10; stroke-width:1.5; font-weight:900; font-size:26px; letter-spacing:.4px;
+      opacity:0; transition: opacity 360ms ease; pointer-events:none; }
+
     /* Switchboard controls: smaller & more grouped */
     .panel{
       margin-top:12px; display:grid; gap:10px;
@@ -70,7 +81,7 @@
 <body>
   <div class="card">
     <h1>Half‑Pizza Progressive Indicator</h1>
-    <p class="sub">Press 1–6 to fill progressively. Press 0 to trigger a strong red flash for 3s. The pressed button stays pushed-in while active.</p>
+    <p class="sub">Press 1–6 to fill progressively. Press 0 to trigger a strong red flash for 3s. The pressed button stays pushed‑in while active.</p>
 
     <svg viewBox="0 0 800 420" role="img" aria-label="Six slice half pizza indicator">
       <defs>
@@ -86,6 +97,8 @@
       <!-- Two layers: red base underneath, green overlays on top -->
       <g id="slices-base" stroke="#0b0c10" stroke-width="8"></g>
       <g id="slices-on" stroke="#0b0c10" stroke-width="8"></g>
+      <!-- Letters overlay -->
+      <g id="letters"></g>
     </svg>
 
     <div class="panel">
@@ -109,12 +122,15 @@
     const STEP_DELAY = 160;   // delay between each slice fading in/out
     const HOLD_MS    = 3000;  // how long to hold fully shown state
     const FLASH_MS   = 3000;  // red flash duration
+    const GREEN_FLASH_MS = 1200; // flash duration when full (6) is reached
 
     const baseG = document.getElementById('slices-base');
     const onG   = document.getElementById('slices-on');
+    const lettersG = document.getElementById('letters');
 
     const baseEls = []; // red base slices
     const onEls   = []; // green overlay slices
+    const letterEls = []; // P L A C E S
 
     let timers = [];    // queued setTimeout handles
     let holdTimer = null;
@@ -133,8 +149,9 @@
       return `M ${p0.x} ${p0.y} L ${p1.x} ${p1.y} A ${rOuter} ${rOuter} 0 0 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${rInner} ${rInner} 0 0 0 ${p0.x} ${p0.y} Z`;
     }
 
-    // Build slices (base + overlay per segment)
+    // Build slices (base + overlay per segment) + letter placeholders
     const per = SWEEP / COUNT;
+    const letters = 'PLACES'.split('');
     for(let i=0;i<COUNT;i++){
       const a0 = START + per*i + GAP/2;
       const a1 = START + per*(i+1) - GAP/2;
@@ -158,6 +175,19 @@
       on.style.opacity = 0;
       onG.appendChild(on);
       onEls.push(on);
+
+      // Letters
+      const mid = (a0 + a1) / 2;
+      const tp = polar(CX, CY, R - (THICKNESS/2) - 14, mid);
+      const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+      t.setAttribute('x', tp.x);
+      t.setAttribute('y', tp.y);
+      t.setAttribute('text-anchor','middle');
+      t.setAttribute('dominant-baseline','middle');
+      t.setAttribute('class','letter');
+      t.textContent = letters[i];
+      lettersG.appendChild(t);
+      letterEls.push(t);
     }
 
     // ===== Button press visuals =====
@@ -188,7 +218,10 @@
       if(flashTimer){ clearTimeout(flashTimer); flashTimer = null; }
       if(releaseTimer){ clearTimeout(releaseTimer); releaseTimer = null; }
     }
-    function stopFlash(){ baseEls.forEach(b=> b.classList.remove('flash')); }
+    function stopFlash(){ baseEls.forEach(b=> b.classList.remove('flash')); onG.classList.remove('green-flash'); }
+
+    function showPlaces(){ letterEls.forEach(el=> el.style.opacity = 1); }
+    function hidePlaces(){ letterEls.forEach(el=> el.style.opacity = 0); }
 
     function setOpacityUpTo(n, op){
       for(let i=0;i<COUNT;i++){
@@ -201,6 +234,7 @@
       n = Math.max(1, Math.min(COUNT, n));
       clearAllTimers();
       stopFlash();
+      hidePlaces();
       // reset overlays to current state (all off before animating up)
       setOpacityUpTo(0, 0);
 
@@ -213,9 +247,24 @@
         timers.push(h);
       }
 
-      // after last slice has faded in, start hold timer, then fade down
+      // after last slice has faded in
       const lastInAt = (n-1) * STEP_DELAY + 320; // 320 ~= CSS opacity transition ms
-      holdTimer = setTimeout(()=>{ fadeDown(n); }, lastInAt + HOLD_MS);
+
+      if(n === 6){
+        // brief green flash and reveal PLACES
+        const flashStart = lastInAt;
+        const startFlash = setTimeout(()=>{ onG.classList.add('green-flash'); }, flashStart);
+        const endFlash = setTimeout(()=>{ onG.classList.remove('green-flash'); }, flashStart + GREEN_FLASH_MS);
+        const showLetters = setTimeout(()=>{ showPlaces(); }, flashStart + 200);
+        timers.push(startFlash, endFlash, showLetters);
+      }
+
+      // start hold, then fade down
+      holdTimer = setTimeout(()=>{ 
+        // hide letters just before fading down
+        hidePlaces();
+        fadeDown(n); 
+      }, lastInAt + HOLD_MS);
 
       // total duration to keep button pressed = fade-in + hold + fade-out
       const fadeOutDur = (n-1) * STEP_DELAY + 320;
@@ -235,6 +284,7 @@
 
     function flashRed(){
       clearAllTimers();
+      hidePlaces();
       // ensure green overlays are hidden
       setOpacityUpTo(0,0);
       // start flashing strong red on all base segments
@@ -247,7 +297,7 @@
 
     // Public helpers
     window.setSlice = animateTo; // keep same external API name
-    window.clearSlices = ()=>{ clearAllTimers(); stopFlash(); setOpacityUpTo(0,0); releaseButton(); };
+    window.clearSlices = ()=>{ clearAllTimers(); stopFlash(); setOpacityUpTo(0,0); hidePlaces(); releaseButton(); };
     window.flashRed = flashRed;
 
     // Buttons
@@ -261,9 +311,11 @@
 
     // Default: all red
     setOpacityUpTo(0,0);
+    hidePlaces();
   </script>
 </body>
 </html>
+
 
 
 
