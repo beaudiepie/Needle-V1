@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Progressive Indicator</title>
+  <title>Half‑Pizza Progressive Indicator (pressable buttons)</title>
   <style>
     :root{
       --bg:#0b0c10; --text:#e6e8ec; --muted:#a3adbd;
@@ -42,22 +42,35 @@
       transition: opacity 320ms ease; }
     .slice-on.glow{ filter: drop-shadow(0 0 18px var(--on-glow)); }
 
-    /* Switchboard controls */
-    .panel{margin-top:14px; display:grid; grid-template-columns: repeat(3, 1fr); gap:14px;}
+    /* Switchboard controls: smaller & more grouped */
+    .panel{
+      margin-top:12px; display:grid; gap:10px;
+      grid-template-columns: repeat(3, 64px);
+      justify-content:center; align-items:center;
+    }
     .btn{
-      aspect-ratio:1/1; width:88px; max-width:28vw; border-radius:999px; display:grid; place-items:center;
+      aspect-ratio:1/1;
+      width:clamp(44px, 9vw, 64px);
+      border-radius:999px; display:grid; place-items:center;
       border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06);
-      color:var(--text); font-weight:800; font-size:18px; cursor:pointer;
+      color:var(--text); font-weight:800; font-size:16px; cursor:pointer;
       box-shadow: inset 0 2px 4px rgba(255,255,255,.06), 0 6px 16px rgba(0,0,0,.35);
-      transition: transform .12s ease, background .2s ease;
+      transition: transform .12s ease, background .2s ease, box-shadow .2s ease, border-color .2s ease;
     }
     .btn:hover{ transform: translateY(-2px); background:rgba(255,255,255,.1); }
+    /* Pressed-in state */
+    .btn.pressed{
+      transform: translateY(2px) scale(.98);
+      background: rgba(255,255,255,.12);
+      box-shadow: inset 0 4px 10px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.25);
+      border-color: rgba(255,255,255,.22);
+    }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Half‑Pizza Progressive Indicator</h1>
-    <p class="sub">Click 1–6 to fill progressively. Click 0 to trigger a strong red flash for 3s, then auto‑reset to all red.</p>
+    <p class="sub">Press 1–6 to fill progressively. Press 0 to trigger a strong red flash for 3s. The pressed button stays pushed-in while active.</p>
 
     <svg viewBox="0 0 800 420" role="img" aria-label="Six slice half pizza indicator">
       <defs>
@@ -76,13 +89,13 @@
     </svg>
 
     <div class="panel">
-      <button class="btn" data-set="0">0</button>
-      <button class="btn" data-set="1">1</button>
-      <button class="btn" data-set="2">2</button>
-      <button class="btn" data-set="3">3</button>
-      <button class="btn" data-set="4">4</button>
-      <button class="btn" data-set="5">5</button>
-      <button class="btn" data-set="6">6</button>
+      <button class="btn" data-set="0" aria-pressed="false">0</button>
+      <button class="btn" data-set="1" aria-pressed="false">1</button>
+      <button class="btn" data-set="2" aria-pressed="false">2</button>
+      <button class="btn" data-set="3" aria-pressed="false">3</button>
+      <button class="btn" data-set="4" aria-pressed="false">4</button>
+      <button class="btn" data-set="5" aria-pressed="false">5</button>
+      <button class="btn" data-set="6" aria-pressed="false">6</button>
     </div>
   </div>
 
@@ -106,6 +119,8 @@
     let timers = [];    // queued setTimeout handles
     let holdTimer = null;
     let flashTimer = null;
+    let releaseTimer = null;  // for releasing pressed button
+    let activeBtn = null;     // currently pressed button element
 
     const toRad = d => (d * Math.PI) / 180;
     function polar(cx, cy, r, a){ return { x: cx + r * Math.cos(toRad(a)), y: cy + r * Math.sin(toRad(a)) }; }
@@ -145,12 +160,33 @@
       onEls.push(on);
     }
 
+    // ===== Button press visuals =====
+    function pressButton(btn){
+      if(activeBtn && activeBtn !== btn){ releaseButton(); }
+      activeBtn = btn;
+      activeBtn.classList.add('pressed');
+      activeBtn.setAttribute('aria-pressed','true');
+    }
+    function releaseButton(){
+      if(activeBtn){
+        activeBtn.classList.remove('pressed');
+        activeBtn.setAttribute('aria-pressed','false');
+        activeBtn = null;
+      }
+      if(releaseTimer){ clearTimeout(releaseTimer); releaseTimer = null; }
+    }
+    function scheduleRelease(ms){
+      if(releaseTimer) { clearTimeout(releaseTimer); }
+      releaseTimer = setTimeout(()=>{ releaseButton(); }, ms);
+    }
+
     // ===== Animation control =====
     function clearAllTimers(){
       timers.forEach(t=> clearTimeout(t));
       timers = [];
       if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
       if(flashTimer){ clearTimeout(flashTimer); flashTimer = null; }
+      if(releaseTimer){ clearTimeout(releaseTimer); releaseTimer = null; }
     }
     function stopFlash(){ baseEls.forEach(b=> b.classList.remove('flash')); }
 
@@ -177,9 +213,13 @@
         timers.push(h);
       }
 
-      // after last slice has faded in, start hold timer
+      // after last slice has faded in, start hold timer, then fade down
       const lastInAt = (n-1) * STEP_DELAY + 320; // 320 ~= CSS opacity transition ms
       holdTimer = setTimeout(()=>{ fadeDown(n); }, lastInAt + HOLD_MS);
+
+      // total duration to keep button pressed = fade-in + hold + fade-out
+      const fadeOutDur = (n-1) * STEP_DELAY + 320;
+      scheduleRelease(lastInAt + HOLD_MS + fadeOutDur);
     }
 
     function fadeDown(fromN){
@@ -199,19 +239,22 @@
       setOpacityUpTo(0,0);
       // start flashing strong red on all base segments
       baseEls.forEach(b=> b.classList.add('flash'));
-      // stop flashing after FLASH_MS (transition back handled by CSS)
+      // stop flashing after FLASH_MS
       flashTimer = setTimeout(()=>{ stopFlash(); }, FLASH_MS);
+      // keep button pressed during flash
+      scheduleRelease(FLASH_MS);
     }
 
     // Public helpers
     window.setSlice = animateTo; // keep same external API name
-    window.clearSlices = ()=>{ clearAllTimers(); stopFlash(); setOpacityUpTo(0,0); };
+    window.clearSlices = ()=>{ clearAllTimers(); stopFlash(); setOpacityUpTo(0,0); releaseButton(); };
     window.flashRed = flashRed;
 
     // Buttons
     document.querySelectorAll('.btn[data-set]').forEach(btn=>{
       btn.addEventListener('click', ()=>{
         const val = parseInt(btn.dataset.set,10);
+        pressButton(btn);
         if(val === 0) flashRed(); else animateTo(val);
       });
     });
@@ -221,5 +264,6 @@
   </script>
 </body>
 </html>
+
 
 
