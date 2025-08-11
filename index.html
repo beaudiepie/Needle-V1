@@ -3,104 +3,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>6‑Segment Needle Gauge</title>
+  <title>6‑Slice Half Pizza Indicator</title>
   <style>
-    :root {
-      --bg: #0b0c10;
-      --card: #121419;
-      --text: #e6e8ec;
-      --muted: #9aa3b2;
-      --accent: #6ea8fe;
-      --gap: 2; /* degrees of gap between segments */
-      --needle: #ffffff;
-      --tick: #5b6473;
+    :root{
+      --bg:#0b0c10; --card:#121419; --text:#e6e8ec; --muted:#9aa3b2;
+      --on:#22c55e; /* green */
+      --off:#ef4444; /* red */
     }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; height: 100vh; display: grid; place-items: center;
-      background: radial-gradient(1200px 800px at 50% 10%, #111522, var(--bg));
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, "Helvetica Neue", Arial;
-      color: var(--text);
-    }
-    .card {
-      width: min(640px, 92vw);
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 24px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(255,255,255,0.04);
-      padding: 28px 28px 20px;
-    }
-    .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-    h1 { font-size: 18px; margin: 0 0 12px; font-weight: 600; letter-spacing: 0.2px; color: var(--text); }
-    .sub { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
-    .ctrls { display: flex; gap: 12px; align-items: center; }
-    .ctrls input[type="range"]{ width: 280px; accent-color: var(--accent); }
-    .btn{
-      padding: 8px 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06); color: var(--text); cursor: pointer;
-      font-weight: 600; letter-spacing: 0.2px; transition: 180ms ease;
-    }
-    .btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,0.1); }
+    *{box-sizing:border-box}
+    body{margin:0; height:100vh; display:grid; place-items:center; background:#0b0c10; color:var(--text); font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Inter,Roboto,Arial}
+    .card{width:min(640px,92vw); background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); border-radius:24px; box-shadow:0 20px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04); padding:24px}
+    h1{margin:0 0 10px; font-size:18px}
+    .sub{color:var(--muted); font-size:13px; margin-bottom:14px}
+    .row{display:flex; align-items:center; justify-content:space-between; gap:12px}
+    .ctrls{display:flex; gap:10px; flex-wrap:wrap}
+    .btn{padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); color:var(--text); cursor:pointer; font-weight:600; letter-spacing:.2px}
+    .btn:hover{transform:translateY(-1px); background:rgba(255,255,255,.1)}
 
-    /* Gauge specifics */
-    .gauge-wrap { position: relative; }
-    svg { display: block; width: 100%; height: auto; }
-
-    .needle {
-      transform-origin: 50% 100%;
-      transition: transform 700ms cubic-bezier(.2,.9,.2,1.05);
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,.45));
-    }
-    .hub { filter: drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
-    .label { font-size: 12px; fill: var(--muted); font-weight: 600; letter-spacing: .4px; }
-    .title { font-size: 14px; fill: var(--muted); }
-    .value { font-size: 36px; font-weight: 700; fill: var(--text); }
-
-    .seg-1{ stroke: #2dd4bf; }
-    .seg-2{ stroke: #34d399; }
-    .seg-3{ stroke: #a3e635; }
-    .seg-4{ stroke: #facc15; }
-    .seg-5{ stroke: #f59e0b; }
-    .seg-6{ stroke: #ef4444; }
-
-    .tick { stroke: var(--tick); }
+    svg{display:block; width:100%; height:auto}
+    .slice{transition:filter .2s ease, opacity .2s ease}
+    .slice:hover{filter:brightness(1.15)}
+    .label{fill:#e6e8ec; font-size:14px; font-weight:700}
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Needle Score Indicator</h1>
-    <div class="sub">Six clear segments with a smooth, animated needle. Use the slider or buttons to set the score (1–6).</div>
+    <h1>6‑Slice Half Pizza Board</h1>
+    <div class="sub">Click 1–6 (or a slice). One slice turns green, the other five turn red.</div>
 
-    <div class="gauge-wrap">
-      <!-- Responsive SVG Gauge -->
-      <svg viewBox="0 0 600 360" role="img" aria-label="Six segment needle gauge">
-        <!-- BACKGROUND ARC (for subtle base) -->
-        <path d="M60 300 A240 240 0 0 1 540 300" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="28" stroke-linecap="round"/>
+    <svg viewBox="0 0 600 400" role="img" aria-label="Six slice half pizza">
+      <g id="slices" stroke="#0b0c10" stroke-width="6"></g>
+      <g id="labels"></g>
+    </svg>
 
-        <!-- Segments generated in JS -->
-        <g id="segments" stroke-linecap="butt" stroke-width="26" fill="none"></g>
-
-        <!-- Minor ticks -->
-        <g id="ticks" stroke-width="2"></g>
-
-        <!-- Labels 1..6 -->
-        <g id="labels"></g>
-
-        <!-- Needle -->
-        <g id="needle" class="needle">
-          <polygon points="300,300 296,300 300,70 304,300" fill="var(--needle)"/>
-          <circle class="hub" cx="300" cy="300" r="12" fill="#ffffff"/>
-          <circle cx="300" cy="300" r="5" fill="#111"/>
-        </g>
-
-        <!-- Readout -->
-        <text x="300" y="340" class="value" text-anchor="middle" id="readout">1</text>
-      </svg>
-    </div>
-
-    <div class="row" style="margin-top: 14px;">
+    <div class="row" style="margin-top:14px">
       <div class="ctrls">
-        <input id="slider" type="range" min="1" max="6" step="1" value="1"/>
         <button class="btn" data-set="1">1</button>
         <button class="btn" data-set="2">2</button>
         <button class="btn" data-set="3">3</button>
@@ -113,106 +50,69 @@
   </div>
 
   <script>
-    // ===== Config =====
-    const SEGMENTS = 6;                 // number of segments
-    const START = -90;                  // start angle (deg)
-    const END = 90;                     // end angle (deg)
-    const GAP_DEG = 4;                  // visual gap between segments (deg)
-    const R = 240;                      // radius of the gauge arc
-    const CX = 300, CY = 300;           // center of the gauge
+    const COUNT = 6;
+    const CX = 300, CY = 400, R = 220;
+    const START = -180; // start at left
+    const SWEEP = 180;  // half circle
+    const GAP = 4;
 
-    const segColors = ["seg-1","seg-2","seg-3","seg-4","seg-5","seg-6"]; // css classes
-
-    const segmentsG = document.getElementById('segments');
-    const ticksG = document.getElementById('ticks');
+    const slicesG = document.getElementById('slices');
     const labelsG = document.getElementById('labels');
-    const needle = document.getElementById('needle');
-    const readout = document.getElementById('readout');
-
-    function deg2rad(d){ return (d * Math.PI) / 180; }
-    function polar(cx, cy, r, angleDeg){
-      const a = deg2rad(angleDeg);
-      return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
+    const toRad = d => (d * Math.PI) / 180;
+    function polar(cx, cy, r, a){
+      return { x: cx + r * Math.cos(toRad(a)), y: cy + r * Math.sin(toRad(a)) };
     }
-    function arcPath(cx, cy, r, a0, a1){
-      const p0 = polar(cx, cy, r, a0);
-      const p1 = polar(cx, cy, r, a1);
-      const large = (a1 - a0) <= 180 ? 0 : 1;
-      return `M ${p0.x.toFixed(3)} ${p0.y.toFixed(3)} A ${r} ${r} 0 ${large} 1 ${p1.x.toFixed(3)} ${p1.y.toFixed(3)}`;
+    function wedgePath(cx, cy, r, a0, a1){
+      const inner = r - 36;
+      const p0 = polar(cx, cy, inner, a0);
+      const p1 = polar(cx, cy, r, a0);
+      const p2 = polar(cx, cy, r, a1);
+      const p3 = polar(cx, cy, inner, a1);
+      return `M ${p0.x} ${p0.y} L ${p1.x} ${p1.y} A ${r} ${r} 0 0 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${inner} ${inner} 0 0 0 ${p0.x} ${p0.y} Z`;
     }
 
-    // Build segments with gaps
-    (function buildSegments(){
-      const span = END - START;                 // total sweep
-      const per = span / SEGMENTS;              // degrees per segment
-      const innerGap = Math.min(GAP_DEG, per * 0.4); // safety cap
-      for(let i=0;i<SEGMENTS;i++){
-        const a0 = START + per*i + innerGap/2;
-        const a1 = START + per*(i+1) - innerGap/2;
-        const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-        path.setAttribute('d', arcPath(CX, CY, R, a0, a1));
-        path.setAttribute('class', segColors[i % segColors.length]);
-        segmentsG.appendChild(path);
+    const per = SWEEP / COUNT;
+    const sliceEls = [];
+    for(let i=0;i<COUNT;i++){
+      const a0 = START + per*i + GAP/2;
+      const a1 = START + per*(i+1) - GAP/2;
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d', wedgePath(CX, CY, R, a0, a1));
+      path.setAttribute('class','slice');
+      path.style.fill = 'var(--off)';
+      path.style.cursor = 'pointer';
+      path.addEventListener('click', ()=> setActive(i+1));
+      slicesG.appendChild(path);
+      sliceEls.push(path);
 
-        // label at center of segment
-        const mid = (a0 + a1) / 2;
-        const lp = polar(CX, CY, R + 26, mid);
-        const label = document.createElementNS('http://www.w3.org/2000/svg','text');
-        label.setAttribute('x', lp.x.toFixed(2));
-        label.setAttribute('y', lp.y.toFixed(2));
-        label.setAttribute('text-anchor','middle');
-        label.setAttribute('dominant-baseline','middle');
-        label.setAttribute('class','label');
-        label.textContent = (i+1).toString();
-        labelsG.appendChild(label);
-      }
-
-      // minor ticks each 15°
-      for(let a=START; a<=END; a+=15){
-        const p0 = polar(CX, CY, R - 18, a);
-        const p1 = polar(CX, CY, R - 6, a);
-        const tick = document.createElementNS('http://www.w3.org/2000/svg','line');
-        tick.setAttribute('x1', p0.x.toFixed(2));
-        tick.setAttribute('y1', p0.y.toFixed(2));
-        tick.setAttribute('x2', p1.x.toFixed(2));
-        tick.setAttribute('y2', p1.y.toFixed(2));
-        tick.setAttribute('class','tick');
-        ticksG.appendChild(tick);
-      }
-    })();
-
-    // Map score in [1..6] to angle
-    function angleForScore(score){
-      const s = Math.max(1, Math.min(SEGMENTS, score));
-      const per = (END - START) / SEGMENTS;
-      return START + per*(s-0.5); // center of the segment
+      const mid = (a0 + a1)/2;
+      const lp = polar(CX, CY, R - 60, mid);
+      const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+      label.setAttribute('x', lp.x);
+      label.setAttribute('y', lp.y);
+      label.setAttribute('text-anchor','middle');
+      label.setAttribute('dominant-baseline','middle');
+      label.setAttribute('class','label');
+      label.textContent = (i+1).toString();
+      labelsG.appendChild(label);
     }
 
-    function setScore(score){
-      const angle = angleForScore(score);
-      needle.style.transform = `rotate(${angle+90}deg)`; // needle polygon points upward from hub
-      readout.textContent = score.toString();
-    }
-
-    // expose globally
-    window.setScore = setScore;
-
-    // UI wiring
-    const slider = document.getElementById('slider');
-    slider.addEventListener('input', (e)=> setScore(parseInt(e.target.value,10)));
-    document.querySelectorAll('.btn[data-set]').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const v = parseInt(btn.dataset.set,10);
-        slider.value = v; setScore(v);
+    function setActive(n){
+      sliceEls.forEach((el, i)=>{
+        el.style.fill = (i+1===n) ? 'var(--on)' : 'var(--off)';
       });
+    }
+
+    document.querySelectorAll('.btn[data-set]').forEach(btn=>{
+      btn.addEventListener('click', ()=> setActive(parseInt(btn.dataset.set,10)));
     });
     document.getElementById('random').addEventListener('click', ()=>{
-      const v = 1 + Math.floor(Math.random()*SEGMENTS);
-      slider.value = v; setScore(v);
+      const v = 1 + Math.floor(Math.random()*COUNT);
+      setActive(v);
     });
 
-    // initial
-    setScore(parseInt(slider.value,10));
+    setActive(1);
   </script>
 </body>
 </html>
+
