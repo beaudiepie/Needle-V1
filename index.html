@@ -3,16 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Half‑Pizza 6‑Segment Indicator</title>
+  <title>Half‑Pizza Progressive Indicator</title>
   <style>
     :root{
       --bg:#0b0c10; --text:#e6e8ec; --muted:#a3adbd;
-      /* === Customisable colours === */
-      --on-start:#22c55e;  /* active gradient start  */
-      --on-end:#16a34a;    /* active gradient end    */
-      --off-start:#ef4444; /* inactive gradient start*/
-      --off-end:#b91c1c;   /* inactive gradient end  */
-      --on-glow: rgba(34,197,94,.55); /* glow when active */
+      --on-start:#22c55e;  --on-end:#16a34a;
+      --off-start:#ef4444; --off-end:#b91c1c;
+      --on-glow: rgba(34,197,94,.55);
     }
     *{box-sizing:border-box}
     body{
@@ -20,7 +17,7 @@
       background: radial-gradient(1200px 800px at 50% 10%, #121725, var(--bg));
       color:var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Inter, Roboto, Arial;
     }
-    .card{width:min(760px,96vw); padding:22px 22px 18px; border-radius:24px;
+    .card{width:min(760px,96vw); padding:22px; border-radius:24px;
       background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
       border:1px solid rgba(255,255,255,.08);
       box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04);
@@ -32,27 +29,22 @@
     .slice{cursor:pointer; transition:filter .2s ease, opacity .2s ease}
     .slice.active{ filter: drop-shadow(0 0 18px var(--on-glow)); }
 
-    /* Switchboard controls */
     .panel{margin-top:14px; display:grid; grid-template-columns: repeat(3, 1fr); gap:14px;}
     .btn{
       aspect-ratio:1/1; width:88px; max-width:28vw; border-radius:999px; display:grid; place-items:center;
       border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06);
-      color:var(--text); font-weight:800; font-size:18px; letter-spacing:.3px; cursor:pointer;
+      color:var(--text); font-weight:800; font-size:18px; cursor:pointer;
       box-shadow: inset 0 2px 4px rgba(255,255,255,.06), 0 6px 16px rgba(0,0,0,.35);
       transition: transform .12s ease, background .2s ease;
     }
     .btn:hover{ transform: translateY(-2px); background:rgba(255,255,255,.1); }
-    .meta{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-top:10px}
-    .meta small{color:var(--muted)}
-
-    /* Hide numbers on slices per requirement */
     .labels{display:none}
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>Half‑Pizza Indicator</h1>
-    <p class="sub">Click a switch: chosen slice glows with a gradient; others stay red. Default state: all red.</p>
+    <h1>Half‑Pizza Progressive Indicator</h1>
+    <p class="sub">Select a level: segments fill progressively green from left to right; default is all red.</p>
 
     <svg viewBox="0 0 800 420" role="img" aria-label="Six slice half pizza indicator">
       <defs>
@@ -65,13 +57,9 @@
           <stop offset="100%" stop-color="var(--off-end)"/>
         </linearGradient>
       </defs>
-
-      <!-- Slice group (no numeric labels rendered on the pizza) -->
       <g id="slices" stroke="#0b0c10" stroke-width="8"></g>
-      <g id="labels" class="labels"></g>
     </svg>
 
-    <!-- Switchboard: 1..6 circular buttons in a 3x2 grid -->
     <div class="panel">
       <button class="btn" data-set="1">1</button>
       <button class="btn" data-set="2">2</button>
@@ -80,21 +68,15 @@
       <button class="btn" data-set="5">5</button>
       <button class="btn" data-set="6">6</button>
     </div>
-
-    <div class="meta">
-      <small>Tip: tweak colours in <code>:root</code> (on/off gradients + glow).</small>
-      <small>API: <code>setSlice(n)</code> • <code>clearSlices()</code></small>
-    </div>
   </div>
 
   <script>
-    // ===== Config =====
     const COUNT = 6;
-    const CX = 400, CY = 420, R = 260;     // center and radius (half circle anchored at bottom)
-    const START = -180;                     // left
-    const SWEEP = 180;                      // half circle sweep
-    const GAP = 6;                          // degrees between slices
-    const THICKNESS = 90;                   // thicker segments
+    const CX = 400, CY = 420, R = 260;
+    const START = -180;
+    const SWEEP = 180;
+    const GAP = 6;
+    const THICKNESS = 90;
 
     const slicesG = document.getElementById('slices');
     const sliceEls = [];
@@ -110,7 +92,6 @@
       return `M ${p0.x} ${p0.y} L ${p1.x} ${p1.y} A ${rOuter} ${rOuter} 0 0 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${rInner} ${rInner} 0 0 0 ${p0.x} ${p0.y} Z`;
     }
 
-    // Build slices
     const per = SWEEP / COUNT;
     for(let i=0;i<COUNT;i++){
       const a0 = START + per*i + GAP/2;
@@ -118,39 +99,40 @@
       const path = document.createElementNS('http://www.w3.org/2000/svg','path');
       path.setAttribute('d', wedgePath(CX, CY, R, THICKNESS, a0, a1));
       path.setAttribute('fill', 'url(#grad-off)');
-      path.setAttribute('class','slice');
+      path.classList.add('slice');
       path.dataset.index = (i+1).toString();
       path.addEventListener('click', ()=> setSlice(i+1));
       slicesG.appendChild(path);
       sliceEls.push(path);
     }
 
-    // State control
     function setSlice(n){
       const idx = Math.max(1, Math.min(COUNT, n));
       sliceEls.forEach((el, i)=>{
-        const active = (i+1) === idx;
+        const active = (i+1) <= idx;
         el.setAttribute('fill', active ? 'url(#grad-on)' : 'url(#grad-off)');
         el.classList.toggle('active', active);
       });
     }
+
     function clearSlices(){
-      sliceEls.forEach(el=>{ el.setAttribute('fill','url(#grad-off)'); el.classList.remove('active'); });
+      sliceEls.forEach(el=>{
+        el.setAttribute('fill','url(#grad-off)');
+        el.classList.remove('active');
+      });
     }
 
-    // Expose controls
     window.setSlice = setSlice;
     window.clearSlices = clearSlices;
 
-    // Switchboard buttons
     document.querySelectorAll('.btn[data-set]').forEach(btn=>{
       btn.addEventListener('click', ()=> setSlice(parseInt(btn.dataset.set,10)));
     });
 
-    // Default state: all red (no selection)
     clearSlices();
   </script>
 </body>
 </html>
+
 
 
