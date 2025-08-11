@@ -3,115 +3,153 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>6-Slice Half Pizza Indicator</title>
+  <title>Half‑Pizza 6‑Segment Indicator</title>
   <style>
     :root{
-      --bg:#0b0c10; --card:#121419; --text:#e6e8ec; --muted:#9aa3b2;
-      --on:#22c55e; /* green */
-      --off:#ef4444; /* red */
+      --bg:#0b0c10; --text:#e6e8ec; --muted:#a3adbd;
+      /* === Customisable colours === */
+      --on-start:#22c55e;  /* active gradient start  */
+      --on-end:#16a34a;    /* active gradient end    */
+      --off-start:#ef4444; /* inactive gradient start*/
+      --off-end:#b91c1c;   /* inactive gradient end  */
+      --on-glow: rgba(34,197,94,.55); /* glow when active */
     }
     *{box-sizing:border-box}
-    body{margin:0; height:100vh; display:grid; place-items:center; background:#0b0c10; color:var(--text); font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Inter,Roboto,Arial}
-    .card{width:min(640px,92vw); background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02)); border:1px solid rgba(255,255,255,.08); border-radius:24px; box-shadow:0 20px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04); padding:24px}
-    h1{margin:0 0 10px; font-size:18px}
-    .sub{color:var(--muted); font-size:13px; margin-bottom:14px}
-    .row{display:flex; align-items:center; justify-content:space-between; gap:12px}
-    .ctrls{display:flex; gap:10px; flex-wrap:wrap}
-    .btn{padding:8px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); color:var(--text); cursor:pointer; font-weight:600; letter-spacing:.2px}
-    .btn:hover{transform:translateY(-1px); background:rgba(255,255,255,.1)}
+    body{
+      margin:0; height:100vh; display:grid; place-items:center;
+      background: radial-gradient(1200px 800px at 50% 10%, #121725, var(--bg));
+      color:var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Inter, Roboto, Arial;
+    }
+    .card{width:min(760px,96vw); padding:22px 22px 18px; border-radius:24px;
+      background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04);
+    }
+    h1{margin:0 0 6px; font-size:18px}
+    .sub{margin:0 0 12px; color:var(--muted); font-size:13px}
 
     svg{display:block; width:100%; height:auto}
-    .slice{transition:filter .2s ease, opacity .2s ease}
-    .slice:hover{filter:brightness(1.15)}
-    .label{fill:#e6e8ec; font-size:14px; font-weight:700}
+    .slice{cursor:pointer; transition:filter .2s ease, opacity .2s ease}
+    .slice.active{ filter: drop-shadow(0 0 18px var(--on-glow)); }
+
+    /* Switchboard controls */
+    .panel{margin-top:14px; display:grid; grid-template-columns: repeat(3, 1fr); gap:14px;}
+    .btn{
+      aspect-ratio:1/1; width:88px; max-width:28vw; border-radius:999px; display:grid; place-items:center;
+      border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06);
+      color:var(--text); font-weight:800; font-size:18px; letter-spacing:.3px; cursor:pointer;
+      box-shadow: inset 0 2px 4px rgba(255,255,255,.06), 0 6px 16px rgba(0,0,0,.35);
+      transition: transform .12s ease, background .2s ease;
+    }
+    .btn:hover{ transform: translateY(-2px); background:rgba(255,255,255,.1); }
+    .meta{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-top:10px}
+    .meta small{color:var(--muted)}
+
+    /* Hide numbers on slices per requirement */
+    .labels{display:none}
   </style>
 </head>
 <body>
   <div class="card">
-    <h1>6-Slice Half Pizza Board</h1>
-    <div class="sub">Click 1–6 (or a slice). One slice turns green, the other five turn red.</div>
+    <h1>Half‑Pizza Indicator</h1>
+    <p class="sub">Click a switch: chosen slice glows with a gradient; others stay red. Default state: all red.</p>
 
-    <svg viewBox="0 0 600 400" role="img" aria-label="Six slice half pizza">
-      <g id="slices" stroke="#0b0c10" stroke-width="6"></g>
-      <g id="labels"></g>
+    <svg viewBox="0 0 800 420" role="img" aria-label="Six slice half pizza indicator">
+      <defs>
+        <linearGradient id="grad-on" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="var(--on-start)"/>
+          <stop offset="100%" stop-color="var(--on-end)"/>
+        </linearGradient>
+        <linearGradient id="grad-off" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="var(--off-start)"/>
+          <stop offset="100%" stop-color="var(--off-end)"/>
+        </linearGradient>
+      </defs>
+
+      <!-- Slice group (no numeric labels rendered on the pizza) -->
+      <g id="slices" stroke="#0b0c10" stroke-width="8"></g>
+      <g id="labels" class="labels"></g>
     </svg>
 
-    <div class="row" style="margin-top:14px">
-      <div class="ctrls">
-        <button class="btn" data-set="1">1</button>
-        <button class="btn" data-set="2">2</button>
-        <button class="btn" data-set="3">3</button>
-        <button class="btn" data-set="4">4</button>
-        <button class="btn" data-set="5">5</button>
-        <button class="btn" data-set="6">6</button>
-      </div>
-      <button class="btn" id="random">Random</button>
+    <!-- Switchboard: 1..6 circular buttons in a 3x2 grid -->
+    <div class="panel">
+      <button class="btn" data-set="1">1</button>
+      <button class="btn" data-set="2">2</button>
+      <button class="btn" data-set="3">3</button>
+      <button class="btn" data-set="4">4</button>
+      <button class="btn" data-set="5">5</button>
+      <button class="btn" data-set="6">6</button>
+    </div>
+
+    <div class="meta">
+      <small>Tip: tweak colours in <code>:root</code> (on/off gradients + glow).</small>
+      <small>API: <code>setSlice(n)</code> • <code>clearSlices()</code></small>
     </div>
   </div>
 
   <script>
+    // ===== Config =====
     const COUNT = 6;
-    const CX = 300, CY = 400, R = 220;
-    const START = -180; // start at left
-    const SWEEP = 180;  // half circle
-    const GAP = 4;
+    const CX = 400, CY = 420, R = 260;     // center and radius (half circle anchored at bottom)
+    const START = -180;                     // left
+    const SWEEP = 180;                      // half circle sweep
+    const GAP = 6;                          // degrees between slices
+    const THICKNESS = 90;                   // thicker segments
 
     const slicesG = document.getElementById('slices');
-    const labelsG = document.getElementById('labels');
+    const sliceEls = [];
+
     const toRad = d => (d * Math.PI) / 180;
-    function polar(cx, cy, r, a){
-      return { x: cx + r * Math.cos(toRad(a)), y: cy + r * Math.sin(toRad(a)) };
-    }
-    function wedgePath(cx, cy, r, a0, a1){
-      const inner = r - 36;
-      const p0 = polar(cx, cy, inner, a0);
-      const p1 = polar(cx, cy, r, a0);
-      const p2 = polar(cx, cy, r, a1);
-      const p3 = polar(cx, cy, inner, a1);
-      return `M ${p0.x} ${p0.y} L ${p1.x} ${p1.y} A ${r} ${r} 0 0 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${inner} ${inner} 0 0 0 ${p0.x} ${p0.y} Z`;
+    function polar(cx, cy, r, a){ return { x: cx + r * Math.cos(toRad(a)), y: cy + r * Math.sin(toRad(a)) }; }
+    function wedgePath(cx, cy, rOuter, thickness, a0, a1){
+      const rInner = rOuter - thickness;
+      const p0 = polar(cx, cy, rInner, a0);
+      const p1 = polar(cx, cy, rOuter, a0);
+      const p2 = polar(cx, cy, rOuter, a1);
+      const p3 = polar(cx, cy, rInner, a1);
+      return `M ${p0.x} ${p0.y} L ${p1.x} ${p1.y} A ${rOuter} ${rOuter} 0 0 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${rInner} ${rInner} 0 0 0 ${p0.x} ${p0.y} Z`;
     }
 
+    // Build slices
     const per = SWEEP / COUNT;
-    const sliceEls = [];
     for(let i=0;i<COUNT;i++){
       const a0 = START + per*i + GAP/2;
       const a1 = START + per*(i+1) - GAP/2;
       const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-      path.setAttribute('d', wedgePath(CX, CY, R, a0, a1));
+      path.setAttribute('d', wedgePath(CX, CY, R, THICKNESS, a0, a1));
+      path.setAttribute('fill', 'url(#grad-off)');
       path.setAttribute('class','slice');
-      path.style.fill = 'var(--off)';
-      path.style.cursor = 'pointer';
-      path.addEventListener('click', ()=> setActive(i+1));
+      path.dataset.index = (i+1).toString();
+      path.addEventListener('click', ()=> setSlice(i+1));
       slicesG.appendChild(path);
       sliceEls.push(path);
-
-      const mid = (a0 + a1)/2;
-      const lp = polar(CX, CY, R - 60, mid);
-      const label = document.createElementNS('http://www.w3.org/2000/svg','text');
-      label.setAttribute('x', lp.x);
-      label.setAttribute('y', lp.y);
-      label.setAttribute('text-anchor','middle');
-      label.setAttribute('dominant-baseline','middle');
-      label.setAttribute('class','label');
-      label.textContent = (i+1).toString();
-      labelsG.appendChild(label);
     }
 
-    function setActive(n){
+    // State control
+    function setSlice(n){
+      const idx = Math.max(1, Math.min(COUNT, n));
       sliceEls.forEach((el, i)=>{
-        el.style.fill = (i+1===n) ? 'var(--on)' : 'var(--off)';
+        const active = (i+1) === idx;
+        el.setAttribute('fill', active ? 'url(#grad-on)' : 'url(#grad-off)');
+        el.classList.toggle('active', active);
       });
     }
+    function clearSlices(){
+      sliceEls.forEach(el=>{ el.setAttribute('fill','url(#grad-off)'); el.classList.remove('active'); });
+    }
 
+    // Expose controls
+    window.setSlice = setSlice;
+    window.clearSlices = clearSlices;
+
+    // Switchboard buttons
     document.querySelectorAll('.btn[data-set]').forEach(btn=>{
-      btn.addEventListener('click', ()=> setActive(parseInt(btn.dataset.set,10)));
-    });
-    document.getElementById('random').addEventListener('click', ()=>{
-      const v = 1 + Math.floor(Math.random()*COUNT);
-      setActive(v);
+      btn.addEventListener('click', ()=> setSlice(parseInt(btn.dataset.set,10)));
     });
 
-    setActive(1);
+    // Default state: all red (no selection)
+    clearSlices();
   </script>
 </body>
 </html>
+
