@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Half‑Pizza Progressive Indicator (with Fade + Auto‑Reset)</title>
+  <title>Progressive Indicator</title>
   <style>
     :root{
       --bg:#0b0c10; --text:#e6e8ec; --muted:#a3adbd;
       --on-start:#22c55e;  --on-end:#16a34a;   /* active gradient */
       --off-start:#ef4444; --off-end:#b91c1c;  /* inactive gradient */
       --on-glow: rgba(34,197,94,.55);
+      --off-glow-strong: rgba(239,68,68,.95);  /* strong red flash glow */
     }
     *{box-sizing:border-box}
     body{
@@ -28,7 +29,13 @@
     svg{display:block; width:100%; height:auto}
 
     /* Base (red) slices live under green overlays */
-    .slice-base{ cursor:pointer; }
+    .slice-base{ cursor:pointer; transition: filter 300ms ease; }
+    .slice-base.flash{ animation: flashRed 480ms ease-in-out infinite; filter: drop-shadow(0 0 26px var(--off-glow-strong)); }
+
+    @keyframes flashRed{
+      0%,100%{ filter: drop-shadow(0 0 12px rgba(239,68,68,.65)); }
+      50%   { filter: drop-shadow(0 0 32px rgba(239,68,68,1)); }
+    }
 
     /* Green overlays default invisible; we animate their opacity */
     .slice-on{ opacity:0; pointer-events:none; /* clicks pass to base */
@@ -50,7 +57,7 @@
 <body>
   <div class="card">
     <h1>Half‑Pizza Progressive Indicator</h1>
-    <p class="sub">Click 1–6. Slices fade in one‑by‑one up to your choice. After 3s, it fades back to all red.</p>
+    <p class="sub">Click 1–6 to fill progressively. Click 0 to trigger a strong red flash for 3s, then auto‑reset to all red.</p>
 
     <svg viewBox="0 0 800 420" role="img" aria-label="Six slice half pizza indicator">
       <defs>
@@ -69,6 +76,7 @@
     </svg>
 
     <div class="panel">
+      <button class="btn" data-set="0">0</button>
       <button class="btn" data-set="1">1</button>
       <button class="btn" data-set="2">2</button>
       <button class="btn" data-set="3">3</button>
@@ -85,8 +93,9 @@
     const START = -180, SWEEP = 180, GAP = 6, THICKNESS = 90;
 
     // Animation timings
-    const STEP_DELAY = 160;   // delay between each slice fading in
+    const STEP_DELAY = 160;   // delay between each slice fading in/out
     const HOLD_MS    = 3000;  // how long to hold fully shown state
+    const FLASH_MS   = 3000;  // red flash duration
 
     const baseG = document.getElementById('slices-base');
     const onG   = document.getElementById('slices-on');
@@ -96,7 +105,7 @@
 
     let timers = [];    // queued setTimeout handles
     let holdTimer = null;
-    let currentLevel = 0; // how many are currently lit
+    let flashTimer = null;
 
     const toRad = d => (d * Math.PI) / 180;
     function polar(cx, cy, r, a){ return { x: cx + r * Math.cos(toRad(a)), y: cy + r * Math.sin(toRad(a)) }; }
@@ -141,19 +150,21 @@
       timers.forEach(t=> clearTimeout(t));
       timers = [];
       if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
+      if(flashTimer){ clearTimeout(flashTimer); flashTimer = null; }
     }
+    function stopFlash(){ baseEls.forEach(b=> b.classList.remove('flash')); }
 
     function setOpacityUpTo(n, op){
       for(let i=0;i<COUNT;i++){
         onEls[i].style.opacity = i < n ? op : 0;
         onEls[i].classList.toggle('glow', i < n && op > 0);
       }
-      currentLevel = n;
     }
 
     function animateTo(n){
       n = Math.max(1, Math.min(COUNT, n));
       clearAllTimers();
+      stopFlash();
       // reset overlays to current state (all off before animating up)
       setOpacityUpTo(0, 0);
 
@@ -168,8 +179,7 @@
 
       // after last slice has faded in, start hold timer
       const lastInAt = (n-1) * STEP_DELAY + 320; // 320 ~= CSS opacity transition ms
-      const hold = setTimeout(()=>{ fadeDown(n); }, lastInAt + HOLD_MS);
-      holdTimer = hold;
+      holdTimer = setTimeout(()=>{ fadeDown(n); }, lastInAt + HOLD_MS);
     }
 
     function fadeDown(fromN){
@@ -178,19 +188,32 @@
         const h = setTimeout(()=>{
           onEls[i].style.opacity = 0;
           onEls[i].classList.remove('glow');
-          if(i===0) currentLevel = 0;
         }, step * STEP_DELAY);
         timers.push(h);
       }
     }
 
+    function flashRed(){
+      clearAllTimers();
+      // ensure green overlays are hidden
+      setOpacityUpTo(0,0);
+      // start flashing strong red on all base segments
+      baseEls.forEach(b=> b.classList.add('flash'));
+      // stop flashing after FLASH_MS (transition back handled by CSS)
+      flashTimer = setTimeout(()=>{ stopFlash(); }, FLASH_MS);
+    }
+
     // Public helpers
     window.setSlice = animateTo; // keep same external API name
-    window.clearSlices = ()=>{ clearAllTimers(); setOpacityUpTo(0,0); };
+    window.clearSlices = ()=>{ clearAllTimers(); stopFlash(); setOpacityUpTo(0,0); };
+    window.flashRed = flashRed;
 
     // Buttons
     document.querySelectorAll('.btn[data-set]').forEach(btn=>{
-      btn.addEventListener('click', ()=> animateTo(parseInt(btn.dataset.set,10)));
+      btn.addEventListener('click', ()=>{
+        const val = parseInt(btn.dataset.set,10);
+        if(val === 0) flashRed(); else animateTo(val);
+      });
     });
 
     // Default: all red
@@ -198,4 +221,5 @@
   </script>
 </body>
 </html>
+
 
