@@ -11,14 +11,14 @@
       --panel-2: #0c0f16;
       --text: #e8ecf2;
       --muted: #a3acc2;
-      --accent: #6ecbff; /* updated by JS to match selected color */
+      --accent: #6ecbff;
       --segment-off: #242a3a;
       --segment-on: #9fdcff;
       --glow: 0 0 20px var(--accent), 0 0 40px var(--accent, #6ecbff);
     }
     *{box-sizing:border-box}
     body{
-      margin:0; padding:24px; font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      margin:0; padding:24px; font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
       background: radial-gradient(1200px 800px at 20% -10%, #1a2031 0%, var(--bg) 50%);
       color:var(--text);
     }
@@ -28,13 +28,10 @@
     .sub{color:var(--muted); font-size:13px}
 
     .board{display:grid; grid-template-columns:1fr 380px; gap:20px}
-    @media (max-width: 920px){
-      .board{grid-template-columns:1fr}
-    }
+    @media (max-width: 920px){.board{grid-template-columns:1fr}}
 
     .card{background:linear-gradient(180deg, var(--panel), var(--panel-2)); border:1px solid #20263a; border-radius:16px; padding:18px; box-shadow: 0 10px 30px rgba(0,0,0,0.25)}
 
-    /* Meter */
     .meter-wrap{display:grid; gap:14px}
     .meter-label{display:flex; align-items:center; justify-content:space-between}
     .meter-label b{font-size:14px}
@@ -61,29 +58,19 @@
       box-shadow: var(--glow);
       animation: breathe 1.2s ease-in-out 1;
     }
-    @keyframes breathe{
-      0%{ box-shadow:none }
-      50%{ box-shadow: 0 0 10px var(--accent) }
-      100%{ box-shadow: var(--glow) }
-    }
+    @keyframes breathe{0%{ box-shadow:none }50%{ box-shadow: 0 0 10px var(--accent) }100%{ box-shadow: var(--glow) }}
 
-    /* Controls */
     .controls{display:flex; flex-wrap:wrap; gap:10px}
     button, select{
       background:#0e1424; color:var(--text); border:1px solid #24304d; padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer; 
-      transition: transform .06s ease, box-shadow .2s ease, border-color .2s ease;
     }
     select{cursor:pointer}
     button:active{ transform: translateY(1px) }
-    .hit{
-      background: radial-gradient(200px 180px at 50% -40%, rgba(255,255,255,0.05), transparent 60%), #0e1424;
-      border-color:#30426a;
-    }
+    .hit{background: radial-gradient(200px 180px at 50% -40%, rgba(255,255,255,0.05), transparent 60%), #0e1424; border-color:#30426a;}
     .hit.glow{ box-shadow: var(--glow) }
 
     .counter{font-size:13px; color:var(--muted)}
 
-    /* Field */
     .field{
       height:260px; border-radius:16px; border:1px dashed #2b3554; display:grid; place-items:center; position:relative;
       background: repeating-radial-gradient(circle at 20% 30%, #0b0e16, #0b0e16 14px, #0f1424 15px, #0f1424 30px);
@@ -94,9 +81,8 @@
       background: radial-gradient(60% 70% at 50% 50%, var(--accent) 0%, transparent 60%);
     }
     .field.glow::after{ opacity:0.85; animation: pulse 900ms ease-in-out 4 }
-    @keyframes pulse{ 0%,100%{ opacity:0.25 } 50%{ opacity:0.95 } }
+    @keyframes pulse{0%,100%{ opacity:0.25 }50%{ opacity:0.95 }}
 
-    /* Completion badge */
     .badge{display:inline-flex; align-items:center; gap:8px; font-size:12px; color:#a3acc2}
     .dot{width:10px; height:10px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent)}
 
@@ -108,7 +94,7 @@
     <header>
       <div>
         <h1>Segment Energy Meter (x10)</h1>
-        <div class="sub">Press <em>Hit</em> to fill segments. On 10, the field glows in the assigned color.</div>
+        <div class="sub">Press <em>Hit</em> to fill segments. On 10, the field glows in the assigned color then resets.</div>
       </div>
       <div class="badge"><span class="dot"></span> Assigned color</div>
     </header>
@@ -120,15 +106,15 @@
             <b>Energy</b>
             <div class="counter"><span id="count">0</span> / 10</div>
           </div>
-          <div id="meter" class="meter" aria-label="Energy Meter" role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"></div>
+          <div id="meter" class="meter"></div>
         </div>
 
         <div style="height:16px"></div>
 
         <div class="controls">
           <button id="hit" class="hit">🔨 Hit</button>
-          <button id="dec" title="Decrease by 1">−</button>
-          <button id="reset" title="Reset">Reset</button>
+          <button id="dec">−</button>
+          <button id="reset">Reset</button>
           <label style="display:inline-flex; align-items:center; gap:8px; margin-left:auto">
             Color:
             <select id="color">
@@ -164,42 +150,28 @@
     const field = document.getElementById('field');
     const color = document.getElementById('color');
 
-    // Build 10 segments
     const SEGMENTS = 10;
     const segments = [];
     for(let i=0;i<SEGMENTS;i++){
       const s = document.createElement('div');
       s.className = 'segment';
-      s.setAttribute('aria-hidden','true');
       meter.appendChild(s);
       segments.push(s);
     }
 
-    let value = 0; // 0..10
+    let value = 0;
 
     function setAccent(hex){
       document.documentElement.style.setProperty('--accent', hex);
-      // Dynamic segment-on tint that matches accent slightly lighter
-      document.documentElement.style.setProperty('--segment-on', hex + '');
-      // Badge dot updates via CSS var
+      document.documentElement.style.setProperty('--segment-on', hex);
     }
 
     function updateView(){
-      // Fill segments
       segments.forEach((s, i)=>{
         s.classList.toggle('filled', i < value);
       });
-      // ARIA and counter
-      meter.setAttribute('aria-valuenow', String(value));
       countEl.textContent = value;
-      // Button glow feedback
       hitBtn.classList.toggle('glow', value > 0 && value < SEGMENTS);
-      // Field reaction
-      if(value >= SEGMENTS){
-        field.classList.add('glow');
-      } else {
-        field.classList.remove('glow');
-      }
     }
 
     function bump(delta){
@@ -207,28 +179,21 @@
       if(next === value) return;
       value = next;
       updateView();
-      // Tiny haptic-style animation on Hit button
-      if(delta > 0){
-        hitBtn.animate([
-          { transform: 'translateY(0)' },
-          { transform: 'translateY(1px)' },
-          { transform: 'translateY(0)' }
-        ], { duration: 130, easing: 'ease-out' });
+      if(value >= SEGMENTS){
+        field.classList.add('glow');
+        setTimeout(()=>{
+          field.classList.remove('glow');
+          value = 0;
+          updateView();
+        }, 2000);
       }
     }
 
-    // Controls
     hitBtn.addEventListener('click', ()=> bump(1));
     decBtn.addEventListener('click', ()=> bump(-1));
     resetBtn.addEventListener('click', ()=>{ value = 0; updateView(); });
     color.addEventListener('change', (e)=> setAccent(e.target.value));
 
-    // Keyboard accessibility: Space/Enter on Hit
-    hitBtn.addEventListener('keydown', (e)=>{
-      if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); bump(1); }
-    });
-
-    // Initialize
     setAccent(color.value);
     updateView();
   </script>
