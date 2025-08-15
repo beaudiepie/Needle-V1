@@ -94,7 +94,7 @@
     <header>
       <div>
         <h1>Segment Energy Meter (x10)</h1>
-        <div class="sub">Press <em>Hit</em> to fill segments. On 10, the field glows in the assigned color then resets.</div>
+        <div class="sub">Press <em>Hit</em> to fill segments. If you stop hitting, energy drains. On 10, the field glows then resets.</div>
       </div>
       <div class="badge"><span class="dot"></span> Assigned color</div>
     </header>
@@ -160,6 +160,7 @@
     }
 
     let value = 0;
+    let drainInterval = null;
 
     function setAccent(hex){
       document.documentElement.style.setProperty('--accent', hex);
@@ -174,6 +175,21 @@
       hitBtn.classList.toggle('glow', value > 0 && value < SEGMENTS);
     }
 
+    function startDrain(){
+      if(drainInterval) return;
+      drainInterval = setInterval(()=>{
+        if(value > 0){
+          value--;
+          updateView();
+        }
+      }, 800);
+    }
+
+    function stopDrain(){
+      clearInterval(drainInterval);
+      drainInterval = null;
+    }
+
     function bump(delta){
       const next = Math.max(0, Math.min(SEGMENTS, value + delta));
       if(next === value) return;
@@ -181,10 +197,12 @@
       updateView();
       if(value >= SEGMENTS){
         field.classList.add('glow');
+        stopDrain();
         setTimeout(()=>{
           field.classList.remove('glow');
           value = 0;
           updateView();
+          startDrain();
         }, 2000);
       }
     }
@@ -196,6 +214,7 @@
 
     setAccent(color.value);
     updateView();
+    startDrain();
   </script>
 </body>
 </html>
