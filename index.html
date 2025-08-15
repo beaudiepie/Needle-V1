@@ -3,319 +3,234 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Progressive Indicator</title>
+  <title>Hit-to-Fill Segment Meter (x10)</title>
   <style>
     :root{
-      --bg:#0b0c10; --text:#e6e8ec; --muted:#a3adbd;
-      --on-start:#22c55e;  --on-end:#16a34a;   /* active gradient */
-      --off-start:#ef4444; --off-end:#b91c1c;  /* inactive gradient */
-      --on-glow: rgba(34,197,94,.55);
-      --off-glow-strong: rgba(239,68,68,.95);  /* strong red flash glow */
+      --bg: #0f1115;
+      --panel: #151924;
+      --panel-2: #0c0f16;
+      --text: #e8ecf2;
+      --muted: #a3acc2;
+      --accent: #6ecbff; /* updated by JS to match selected color */
+      --segment-off: #242a3a;
+      --segment-on: #9fdcff;
+      --glow: 0 0 20px var(--accent), 0 0 40px var(--accent, #6ecbff);
     }
     *{box-sizing:border-box}
     body{
-      margin:0; height:100vh; display:grid; place-items:center;
-      background: radial-gradient(1200px 800px at 50% 10%, #121725, var(--bg));
-      color:var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Inter, Roboto, Arial;
+      margin:0; padding:24px; font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 800px at 20% -10%, #1a2031 0%, var(--bg) 50%);
+      color:var(--text);
     }
-    .card{width:min(760px,96vw); padding:22px; border-radius:24px;
-      background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.02));
-      border:1px solid rgba(255,255,255,.08);
-      box-shadow: 0 20px 60px rgba(0,0,0,.45), inset 0 0 0 1px rgba(255,255,255,.04);
-    }
-    h1{margin:0 0 6px; font-size:18px}
-    .sub{margin:0 0 12px; color:var(--muted); font-size:13px}
+    .app{max-width:900px; margin:0 auto; display:grid; gap:20px}
+    header{display:flex; align-items:center; justify-content:space-between; gap:16px}
+    h1{font-size:20px; margin:0; font-weight:700; letter-spacing:0.2px}
+    .sub{color:var(--muted); font-size:13px}
 
-    svg{display:block; width:100%; height:auto}
-
-    /* Base (red) slices live under green overlays */
-    .slice-base{ cursor:pointer; transition: filter 300ms ease; }
-    .slice-base.flash{ animation: flashRed 480ms ease-in-out infinite; filter: drop-shadow(0 0 26px var(--off-glow-strong)); }
-
-    @keyframes flashRed{
-      0%,100%{ filter: drop-shadow(0 0 12px rgba(239,68,68,.65)); }
-      50%   { filter: drop-shadow(0 0 32px rgba(239,68,68,1)); }
+    .board{display:grid; grid-template-columns:1fr 380px; gap:20px}
+    @media (max-width: 920px){
+      .board{grid-template-columns:1fr}
     }
 
-    /* Green overlays default invisible; we animate their opacity */
-    .slice-on{ opacity:0; pointer-events:none; /* clicks pass to base */
-      transition: opacity 320ms ease; }
-    .slice-on.glow{ filter: drop-shadow(0 0 18px var(--on-glow)); }
+    .card{background:linear-gradient(180deg, var(--panel), var(--panel-2)); border:1px solid #20263a; border-radius:16px; padding:18px; box-shadow: 0 10px 30px rgba(0,0,0,0.25)}
 
-    /* Group flash when 6 is full */
-    #slices-on.green-flash{ animation: greenFlash 600ms ease-in-out 2; }
-    @keyframes greenFlash{
-      0%,100%{ filter: drop-shadow(0 0 12px rgba(34,197,94,.6)); }
-      50%   { filter: drop-shadow(0 0 34px rgba(34,197,94,1)); }
+    /* Meter */
+    .meter-wrap{display:grid; gap:14px}
+    .meter-label{display:flex; align-items:center; justify-content:space-between}
+    .meter-label b{font-size:14px}
+    .meter{
+      --seg: 10;
+      display:grid; grid-template-columns: repeat(var(--seg), 1fr); gap:10px; 
+      padding:14px; background:#0b0e16; border-radius:14px; border:1px solid #1b2133;
+    }
+    .segment{
+      height:64px; border-radius:12px; position:relative; overflow:hidden;
+      background:linear-gradient(180deg, #1a2132, #0f1320);
+      border:1px solid #232a42;
+      box-shadow: inset 0 3px 12px rgba(0,0,0,0.5);
+    }
+    .segment::after{
+      content:""; position:absolute; inset:2px; border-radius:10px;
+      background:linear-gradient(180deg, var(--segment-off), #1a2032);
+      transition: transform 140ms ease, background 220ms ease, box-shadow 220ms ease;
+      transform: scaleY(0.06); transform-origin: bottom;
+    }
+    .segment.filled::after{
+      background: linear-gradient(180deg, var(--segment-on), var(--accent));
+      transform: scaleY(1);
+      box-shadow: var(--glow);
+      animation: breathe 1.2s ease-in-out 1;
+    }
+    @keyframes breathe{
+      0%{ box-shadow:none }
+      50%{ box-shadow: 0 0 10px var(--accent) }
+      100%{ box-shadow: var(--glow) }
     }
 
-    /* Letters appearing over slices */
-    .letter{ fill:#fff; stroke:#0b0c10; stroke-width:1.5; font-weight:900; font-size:26px; letter-spacing:.4px;
-      opacity:0; transition: opacity 360ms ease; pointer-events:none; }
+    /* Controls */
+    .controls{display:flex; flex-wrap:wrap; gap:10px}
+    button, select{
+      background:#0e1424; color:var(--text); border:1px solid #24304d; padding:10px 14px; border-radius:12px; font-weight:600; cursor:pointer; 
+      transition: transform .06s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+    select{cursor:pointer}
+    button:active{ transform: translateY(1px) }
+    .hit{
+      background: radial-gradient(200px 180px at 50% -40%, rgba(255,255,255,0.05), transparent 60%), #0e1424;
+      border-color:#30426a;
+    }
+    .hit.glow{ box-shadow: var(--glow) }
 
-    /* Switchboard controls: smaller & more grouped */
-    .panel{
-      margin-top:12px; display:grid; gap:10px;
-      grid-template-columns: repeat(3, 64px);
-      justify-content:center; align-items:center;
+    .counter{font-size:13px; color:var(--muted)}
+
+    /* Field */
+    .field{
+      height:260px; border-radius:16px; border:1px dashed #2b3554; display:grid; place-items:center; position:relative;
+      background: repeating-radial-gradient(circle at 20% 30%, #0b0e16, #0b0e16 14px, #0f1424 15px, #0f1424 30px);
     }
-    .btn{
-      aspect-ratio:1/1;
-      width:clamp(44px, 9vw, 64px);
-      border-radius:999px; display:grid; place-items:center;
-      border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06);
-      color:var(--text); font-weight:800; font-size:16px; cursor:pointer;
-      box-shadow: inset 0 2px 4px rgba(255,255,255,.06), 0 6px 16px rgba(0,0,0,.35);
-      transition: transform .12s ease, background .2s ease, box-shadow .2s ease, border-color .2s ease;
+    .field .label{font-weight:800; letter-spacing:2px; text-transform:uppercase; color:#93a1bd; opacity:0.8}
+    .field::after{
+      content:""; position:absolute; inset:0; border-radius:16px; pointer-events:none; filter: blur(10px); opacity:0; transition:opacity .25s ease;
+      background: radial-gradient(60% 70% at 50% 50%, var(--accent) 0%, transparent 60%);
     }
-    .btn:hover{ transform: translateY(-2px); background:rgba(255,255,255,.1); }
-    /* Pressed-in state */
-    .btn.pressed{
-      transform: translateY(2px) scale(.98);
-      background: rgba(255,255,255,.12);
-      box-shadow: inset 0 4px 10px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.25);
-      border-color: rgba(255,255,255,.22);
-    }
+    .field.glow::after{ opacity:0.85; animation: pulse 900ms ease-in-out 4 }
+    @keyframes pulse{ 0%,100%{ opacity:0.25 } 50%{ opacity:0.95 } }
+
+    /* Completion badge */
+    .badge{display:inline-flex; align-items:center; gap:8px; font-size:12px; color:#a3acc2}
+    .dot{width:10px; height:10px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent)}
+
+    .row{display:flex; align-items:center; justify-content:space-between}
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Half‑Pizza Progressive Indicator</h1>
-    <p class="sub">Press 1–6 to fill progressively. Press 0 to trigger a strong red flash for 3s. The pressed button stays pushed‑in while active.</p>
+  <div class="app">
+    <header>
+      <div>
+        <h1>Segment Energy Meter (x10)</h1>
+        <div class="sub">Press <em>Hit</em> to fill segments. On 10, the field glows in the assigned color.</div>
+      </div>
+      <div class="badge"><span class="dot"></span> Assigned color</div>
+    </header>
 
-    <svg viewBox="0 0 800 420" role="img" aria-label="Six slice half pizza indicator">
-      <defs>
-        <linearGradient id="grad-on" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="var(--on-start)"/>
-          <stop offset="100%" stop-color="var(--on-end)"/>
-        </linearGradient>
-        <linearGradient id="grad-off" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="var(--off-start)"/>
-          <stop offset="100%" stop-color="var(--off-end)"/>
-        </linearGradient>
-      </defs>
-      <!-- Two layers: red base underneath, green overlays on top -->
-      <g id="slices-base" stroke="#0b0c10" stroke-width="8"></g>
-      <g id="slices-on" stroke="#0b0c10" stroke-width="8"></g>
-      <!-- Letters overlay -->
-      <g id="letters"></g>
-    </svg>
+    <div class="board">
+      <section class="card">
+        <div class="meter-wrap">
+          <div class="meter-label row">
+            <b>Energy</b>
+            <div class="counter"><span id="count">0</span> / 10</div>
+          </div>
+          <div id="meter" class="meter" aria-label="Energy Meter" role="progressbar" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0"></div>
+        </div>
 
-    <div class="panel">
-      <button class="btn" data-set="0" aria-pressed="false">0</button>
-      <button class="btn" data-set="1" aria-pressed="false">1</button>
-      <button class="btn" data-set="2" aria-pressed="false">2</button>
-      <button class="btn" data-set="3" aria-pressed="false">3</button>
-      <button class="btn" data-set="4" aria-pressed="false">4</button>
-      <button class="btn" data-set="5" aria-pressed="false">5</button>
-      <button class="btn" data-set="6" aria-pressed="false">6</button>
+        <div style="height:16px"></div>
+
+        <div class="controls">
+          <button id="hit" class="hit">🔨 Hit</button>
+          <button id="dec" title="Decrease by 1">−</button>
+          <button id="reset" title="Reset">Reset</button>
+          <label style="display:inline-flex; align-items:center; gap:8px; margin-left:auto">
+            Color:
+            <select id="color">
+              <option value="#6ecbff">Ice Blue</option>
+              <option value="#7df8d3">Mint</option>
+              <option value="#ffd166">Amber</option>
+              <option value="#ff6ec7">Candy Pink</option>
+              <option value="#a98bff">Violet</option>
+              <option value="#63ff5b">Lime</option>
+              <option value="#ff6a5b">Coral</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="row">
+          <b>Field Response</b>
+          <div class="counter">Glows when meter hits 10</div>
+        </div>
+        <div style="height:12px"></div>
+        <div id="field" class="field"><div class="label">Candy Field</div></div>
+      </section>
     </div>
   </div>
 
   <script>
-    // ===== Geometry & Config =====
-    const COUNT = 6;
-    const CX = 400, CY = 420, R = 260;
-    const START = -180, SWEEP = 180, GAP = 6, THICKNESS = 90;
+    const meter = document.getElementById('meter');
+    const countEl = document.getElementById('count');
+    const hitBtn = document.getElementById('hit');
+    const decBtn = document.getElementById('dec');
+    const resetBtn = document.getElementById('reset');
+    const field = document.getElementById('field');
+    const color = document.getElementById('color');
 
-    // Animation timings
-    const STEP_DELAY = 160;   // delay between each slice fading in/out
-    const HOLD_MS    = 3000;  // how long to hold fully shown state
-    const FLASH_MS   = 3000;  // red flash duration
-    const GREEN_FLASH_MS = 1200; // flash duration when full (6) is reached
-
-    const baseG = document.getElementById('slices-base');
-    const onG   = document.getElementById('slices-on');
-    const lettersG = document.getElementById('letters');
-
-    const baseEls = []; // red base slices
-    const onEls   = []; // green overlay slices
-    const letterEls = []; // P L A C E S
-
-    let timers = [];    // queued setTimeout handles
-    let holdTimer = null;
-    let flashTimer = null;
-    let releaseTimer = null;  // for releasing pressed button
-    let activeBtn = null;     // currently pressed button element
-
-    const toRad = d => (d * Math.PI) / 180;
-    function polar(cx, cy, r, a){ return { x: cx + r * Math.cos(toRad(a)), y: cy + r * Math.sin(toRad(a)) }; }
-    function wedgePath(cx, cy, rOuter, thickness, a0, a1){
-      const rInner = rOuter - thickness;
-      const p0 = polar(cx, cy, rInner, a0);
-      const p1 = polar(cx, cy, rOuter, a0);
-      const p2 = polar(cx, cy, rOuter, a1);
-      const p3 = polar(cx, cy, rInner, a1);
-      return `M ${p0.x} ${p0.y} L ${p1.x} ${p1.y} A ${rOuter} ${rOuter} 0 0 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${rInner} ${rInner} 0 0 0 ${p0.x} ${p0.y} Z`;
+    // Build 10 segments
+    const SEGMENTS = 10;
+    const segments = [];
+    for(let i=0;i<SEGMENTS;i++){
+      const s = document.createElement('div');
+      s.className = 'segment';
+      s.setAttribute('aria-hidden','true');
+      meter.appendChild(s);
+      segments.push(s);
     }
 
-    // Build slices (base + overlay per segment) + letter placeholders
-    const per = SWEEP / COUNT;
-    const letters = 'PLACES'.split('');
-    for(let i=0;i<COUNT;i++){
-      const a0 = START + per*i + GAP/2;
-      const a1 = START + per*(i+1) - GAP/2;
-      const d  = wedgePath(CX, CY, R, THICKNESS, a0, a1);
+    let value = 0; // 0..10
 
-      // Base (red)
-      const base = document.createElementNS('http://www.w3.org/2000/svg','path');
-      base.setAttribute('d', d);
-      base.setAttribute('fill','url(#grad-off)');
-      base.setAttribute('class','slice-base');
-      base.dataset.index = (i+1).toString();
-      base.addEventListener('click', ()=> animateTo(i+1));
-      baseG.appendChild(base);
-      baseEls.push(base);
-
-      // Overlay (green)
-      const on = document.createElementNS('http://www.w3.org/2000/svg','path');
-      on.setAttribute('d', d);
-      on.setAttribute('fill','url(#grad-on)');
-      on.setAttribute('class','slice-on');
-      on.style.opacity = 0;
-      onG.appendChild(on);
-      onEls.push(on);
-
-      // Letters
-      const mid = (a0 + a1) / 2;
-      const tp = polar(CX, CY, R - (THICKNESS/2) - 14, mid);
-      const t = document.createElementNS('http://www.w3.org/2000/svg','text');
-      t.setAttribute('x', tp.x);
-      t.setAttribute('y', tp.y);
-      t.setAttribute('text-anchor','middle');
-      t.setAttribute('dominant-baseline','middle');
-      t.setAttribute('class','letter');
-      t.textContent = letters[i];
-      lettersG.appendChild(t);
-      letterEls.push(t);
+    function setAccent(hex){
+      document.documentElement.style.setProperty('--accent', hex);
+      // Dynamic segment-on tint that matches accent slightly lighter
+      document.documentElement.style.setProperty('--segment-on', hex + '');
+      // Badge dot updates via CSS var
     }
 
-    // ===== Button press visuals =====
-    function pressButton(btn){
-      if(activeBtn && activeBtn !== btn){ releaseButton(); }
-      activeBtn = btn;
-      activeBtn.classList.add('pressed');
-      activeBtn.setAttribute('aria-pressed','true');
-    }
-    function releaseButton(){
-      if(activeBtn){
-        activeBtn.classList.remove('pressed');
-        activeBtn.setAttribute('aria-pressed','false');
-        activeBtn = null;
-      }
-      if(releaseTimer){ clearTimeout(releaseTimer); releaseTimer = null; }
-    }
-    function scheduleRelease(ms){
-      if(releaseTimer) { clearTimeout(releaseTimer); }
-      releaseTimer = setTimeout(()=>{ releaseButton(); }, ms);
-    }
-
-    // ===== Animation control =====
-    function clearAllTimers(){
-      timers.forEach(t=> clearTimeout(t));
-      timers = [];
-      if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
-      if(flashTimer){ clearTimeout(flashTimer); flashTimer = null; }
-      if(releaseTimer){ clearTimeout(releaseTimer); releaseTimer = null; }
-    }
-    function stopFlash(){ baseEls.forEach(b=> b.classList.remove('flash')); onG.classList.remove('green-flash'); }
-
-    function showPlaces(){ letterEls.forEach(el=> el.style.opacity = 1); }
-    function hidePlaces(){ letterEls.forEach(el=> el.style.opacity = 0); }
-
-    function setOpacityUpTo(n, op){
-      for(let i=0;i<COUNT;i++){
-        onEls[i].style.opacity = i < n ? op : 0;
-        onEls[i].classList.toggle('glow', i < n && op > 0);
-      }
-    }
-
-    function animateTo(n){
-      n = Math.max(1, Math.min(COUNT, n));
-      clearAllTimers();
-      stopFlash();
-      hidePlaces();
-      // reset overlays to current state (all off before animating up)
-      setOpacityUpTo(0, 0);
-
-      // progressive fade-in one by one
-      for(let i=0;i<n;i++){
-        const h = setTimeout(()=>{
-          onEls[i].style.opacity = 1;
-          onEls[i].classList.add('glow');
-        }, i * STEP_DELAY);
-        timers.push(h);
-      }
-
-      // after last slice has faded in
-      const lastInAt = (n-1) * STEP_DELAY + 320; // 320 ~= CSS opacity transition ms
-
-      if(n === 6){
-        // brief green flash and reveal PLACES
-        const flashStart = lastInAt;
-        const startFlash = setTimeout(()=>{ onG.classList.add('green-flash'); }, flashStart);
-        const endFlash = setTimeout(()=>{ onG.classList.remove('green-flash'); }, flashStart + GREEN_FLASH_MS);
-        const showLetters = setTimeout(()=>{ showPlaces(); }, flashStart + 200);
-        timers.push(startFlash, endFlash, showLetters);
-      }
-
-      // start hold, then fade down
-      holdTimer = setTimeout(()=>{ 
-        // hide letters just before fading down
-        hidePlaces();
-        fadeDown(n); 
-      }, lastInAt + HOLD_MS);
-
-      // total duration to keep button pressed = fade-in + hold + fade-out
-      const fadeOutDur = (n-1) * STEP_DELAY + 320;
-      scheduleRelease(lastInAt + HOLD_MS + fadeOutDur);
-    }
-
-    function fadeDown(fromN){
-      // fade back down to default (all red). We'll go in reverse, one by one.
-      for(let i=fromN-1, step=0; i>=0; i--, step++){
-        const h = setTimeout(()=>{
-          onEls[i].style.opacity = 0;
-          onEls[i].classList.remove('glow');
-        }, step * STEP_DELAY);
-        timers.push(h);
-      }
-    }
-
-    function flashRed(){
-      clearAllTimers();
-      hidePlaces();
-      // ensure green overlays are hidden
-      setOpacityUpTo(0,0);
-      // start flashing strong red on all base segments
-      baseEls.forEach(b=> b.classList.add('flash'));
-      // stop flashing after FLASH_MS
-      flashTimer = setTimeout(()=>{ stopFlash(); }, FLASH_MS);
-      // keep button pressed during flash
-      scheduleRelease(FLASH_MS);
-    }
-
-    // Public helpers
-    window.setSlice = animateTo; // keep same external API name
-    window.clearSlices = ()=>{ clearAllTimers(); stopFlash(); setOpacityUpTo(0,0); hidePlaces(); releaseButton(); };
-    window.flashRed = flashRed;
-
-    // Buttons
-    document.querySelectorAll('.btn[data-set]').forEach(btn=>{
-      btn.addEventListener('click', ()=>{
-        const val = parseInt(btn.dataset.set,10);
-        pressButton(btn);
-        if(val === 0) flashRed(); else animateTo(val);
+    function updateView(){
+      // Fill segments
+      segments.forEach((s, i)=>{
+        s.classList.toggle('filled', i < value);
       });
+      // ARIA and counter
+      meter.setAttribute('aria-valuenow', String(value));
+      countEl.textContent = value;
+      // Button glow feedback
+      hitBtn.classList.toggle('glow', value > 0 && value < SEGMENTS);
+      // Field reaction
+      if(value >= SEGMENTS){
+        field.classList.add('glow');
+      } else {
+        field.classList.remove('glow');
+      }
+    }
+
+    function bump(delta){
+      const next = Math.max(0, Math.min(SEGMENTS, value + delta));
+      if(next === value) return;
+      value = next;
+      updateView();
+      // Tiny haptic-style animation on Hit button
+      if(delta > 0){
+        hitBtn.animate([
+          { transform: 'translateY(0)' },
+          { transform: 'translateY(1px)' },
+          { transform: 'translateY(0)' }
+        ], { duration: 130, easing: 'ease-out' });
+      }
+    }
+
+    // Controls
+    hitBtn.addEventListener('click', ()=> bump(1));
+    decBtn.addEventListener('click', ()=> bump(-1));
+    resetBtn.addEventListener('click', ()=>{ value = 0; updateView(); });
+    color.addEventListener('change', (e)=> setAccent(e.target.value));
+
+    // Keyboard accessibility: Space/Enter on Hit
+    hitBtn.addEventListener('keydown', (e)=>{
+      if(e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); bump(1); }
     });
 
-    // Default: all red
-    setOpacityUpTo(0,0);
-    hidePlaces();
+    // Initialize
+    setAccent(color.value);
+    updateView();
   </script>
 </body>
 </html>
-
-
-
-
